@@ -55,6 +55,7 @@ import {
 import { norm } from "./physics/vector";
 import { orbitalFrame, phaseInPlane } from "./physics/frames";
 import { nextEquatorialNode } from "./physics/planeChange";
+import { useAppSettings } from "./useAppSettings";
 import { useSimulation } from "./useSimulation";
 import { Universe } from "./components/Universe";
 import { TextSizeSettings } from "./components/TextSizeSettings";
@@ -156,6 +157,10 @@ function OrbitalMetrics({ orbit }: { orbit: OrbitSummary }) {
 
 export default function App() {
   useLocale();
+  const appSettings = useAppSettings();
+  const writesBlocked = appSettings.readOnly;
+  const writeReason = appSettings.status === "loading" ? msg("common:settingsLoading")
+    : appSettings.status === "error" ? msg("common:settingsUnavailable") : msg("common:demoReadOnly");
   const [toast, setToast] = useState<{ text: MessageRef; error?: boolean } | null>(
     null,
   );
@@ -362,7 +367,13 @@ export default function App() {
     setLibraryOpen(true);
     void refreshLibrary();
   };
+  const requireWritable = () => {
+    if (!writesBlocked) return true;
+    notify(writeReason, true);
+    return false;
+  };
   const saveScene = async (id: string, name: string) => {
+    if (!requireWritable()) return;
     const captured = structuredClone(config);
     const saved = await request<SavedConfiguration>(
       `/api/configurations/${id}`,
@@ -381,7 +392,8 @@ export default function App() {
     ]);
     notify(msg("common:saved"));
   };
-  const saveAs = () =>
+  const saveAs = () => {
+    if (!requireWritable()) return;
     openDialog({
       title: msg("common:saveAs"),
       description:
@@ -390,7 +402,9 @@ export default function App() {
       input: loadedId ? tx("common:copyName", { name: loadedName }) : tx("common:systemName", { name: config.central.name }),
       action: (value) => saveScene(crypto.randomUUID(), value),
     });
+  };
   const save = () => {
+    if (!requireWritable()) return;
     if (!loadedId) {
       saveAs();
       return;
@@ -592,6 +606,9 @@ export default function App() {
             className="button save-button"
             aria-label={tx("common:save")}
             onClick={save}
+            disabled={writesBlocked}
+            title={writesBlocked ? renderMessage(writeReason) : undefined}
+            aria-describedby={writesBlocked ? "configuration-write-status" : undefined}
           >
             <Save size={15} />
             <span>{tx("common:save")}</span>
@@ -607,6 +624,13 @@ export default function App() {
           </button>
         </div>
       </header>
+      {writesBlocked && (
+        <div className="settings-notice" id="configuration-write-status" role="status">
+          {appSettings.settings?.demoMode && <strong className="demo-badge">{tx("common:demoMode")}</strong>}
+          <span>{renderMessage(writeReason)}</span>
+          {appSettings.status === "error" && <button className="button outline" onClick={appSettings.retry}>{tx("common:retrySettings")}</button>}
+        </div>
+      )}
       <div className="workspace-strip">
         <div>
           <span className="workspace-icon">
@@ -1579,8 +1603,9 @@ export default function App() {
             <p className="panel-description">
               {tx("common:libraryDescription", { file: "celestial-configs.json" })}
             </p>
+            {writesBlocked && <p className="panel-description" role="status">{renderMessage(writeReason)}</p>}
             <div className="library-toolbar">
-              <button className="button primary" onClick={saveAs}>
+              <button className="button primary" onClick={saveAs} disabled={writesBlocked} title={writesBlocked ? renderMessage(writeReason) : undefined}>
                 <Plus size={14} />{tx("common:saveAs")}</button>
               <button
                 className="button outline"
@@ -1627,13 +1652,17 @@ export default function App() {
                   <button
                     className="icon-button delete-button"
                     aria-label={tx("common:deleteNamed", { name: saved.name })}
-                    onClick={() =>
+                    disabled={writesBlocked}
+                    title={writesBlocked ? renderMessage(writeReason) : undefined}
+                    onClick={() => {
+                      if (!requireWritable()) return;
                       openDialog({
                         title: msg("common:deleteTitle"),
                         description: msg("common:deleteDescription", { name: saved.name }),
                         confirm: msg("common:delete"),
                         danger: true,
                         action: async () => {
+                          if (!requireWritable()) return;
                           await request(`/api/configurations/${saved.id}`, {
                             method: "DELETE",
                           });
@@ -1644,8 +1673,8 @@ export default function App() {
                           await refreshLibrary();
                           notify(msg("common:deleted"));
                         },
-                      })
-                    }
+                      });
+                    }}
                   >
                     <Trash2 size={15} />
                   </button>

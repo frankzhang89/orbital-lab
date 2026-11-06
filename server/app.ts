@@ -1,8 +1,10 @@
+import { DEFAULT_APP_SETTINGS, type AppSettings } from "../src/settings";
 import { errorDiagnostics } from "../src/messages";
 import express, { type ErrorRequestHandler } from "express";
 import { ConfigurationStore, StoreError } from "./store";
 
-export function createApp(store: ConfigurationStore) {
+export function createApp(store: ConfigurationStore, settings: Readonly<AppSettings> = DEFAULT_APP_SETTINGS) {
+  const demoMode = settings.demoMode;
   const app = express();
   app.disable("x-powered-by");
   // Local JSON writes are same-origin only; no CORS access from other websites.
@@ -15,6 +17,17 @@ export function createApp(store: ConfigurationStore) {
       return;
     }
     res.setHeader("Cache-Control", "no-store");
+    next();
+  });
+  app.get("/api/settings", (_req, res) => {
+    res.json({ demoMode });
+  });
+  // Reject before body parsing or any storage access, including malformed writes.
+  app.use("/api/configurations", (req, res, next) => {
+    if (demoMode && (req.method === "PUT" || req.method === "DELETE")) {
+      res.status(403).json({ code: "DEMO_MODE_READ_ONLY", error: errorDiagnostics.DEMO_MODE_READ_ONLY });
+      return;
+    }
     next();
   });
   app.use(express.json({ limit: "2mb" }));

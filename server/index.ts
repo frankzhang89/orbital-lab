@@ -4,11 +4,17 @@ import path from "node:path";
 import express from "express";
 import { createApp } from "./app";
 import { ConfigurationStore } from "./store";
+import { readAppSettings } from "./settings";
 
 const root = fileURLToPath(new URL("..", import.meta.url));
 const production = process.argv.includes("--production");
+const settings = await readAppSettings(path.join(root, "app-config.json")).catch((error) => {
+  console.error(error.message);
+  process.exit(1);
+});
 const app = createApp(
   new ConfigurationStore(path.join(root, "celestial-configs.json")),
+  settings,
 );
 const server = createServer(app);
 if (production) {

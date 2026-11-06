@@ -36,6 +36,58 @@ npm test
 
 Storage tests use temporary directories and do not modify your configuration file. Once dependencies are installed, the application runs offline: fonts, icons, and planet visuals are provided locally.
 
+## Background start / stop / restart
+
+The three launch scripts live in the project root beside `package.json`. Prepare the production version once on the target OS:
+
+```text
+npm ci
+npm run build
+```
+
+Use `npm.cmd` on Windows if PowerShell blocks `npm.ps1`. Install all dependencies, including development dependencies: the server uses the local `tsx` loader. On Linux, install dependencies on Linux rather than copying Windows `node_modules`.
+
+Windows (Command Prompt):
+
+```bat
+orbital-lab.cmd start
+orbital-lab.cmd stop
+orbital-lab.cmd restart
+```
+
+In PowerShell, use `.\orbital-lab.cmd start` (or `stop` / `restart`). The CMD entry invokes `orbital-lab.ps1` with Windows PowerShell 5.1+, without a profile; execution-policy bypass applies only to that child process and does not change system policy. The service runs hidden in the background.
+
+Linux (Bash 4+, `flock`, `nohup`, and `/proc`):
+
+```bash
+bash ./orbital-lab.sh start
+bash ./orbital-lab.sh stop
+bash ./orbital-lab.sh restart
+```
+
+The scripts find the project from their own location, so absolute-path invocation works from other working directories, including paths containing spaces or Chinese characters. They require Node.js 22.12+ in the 22.x series or Node.js 24+, installed dependencies, and an existing production build. They do not install packages, rebuild, open a browser, or register an OS service. Run `npm run build` yourself after source updates.
+
+The default address remains `http://127.0.0.1:5173`, accessible only on the local machine. For a custom port, set `PORT` before `start` / `restart`:
+
+```powershell
+$env:PORT = "5180"
+.\orbital-lab.cmd start
+```
+
+```bash
+PORT=5180 bash ./orbital-lab.sh start
+```
+
+Closing the control terminal leaves the server running. Each project directory manages one instance; repeated `start` reports its existing address. `stop` uses the recorded instance even if the current `PORT` differs, and is successful if nothing is running. `restart` stops first and only starts again after a successful stop; it reloads `app-config.json` and uses the new invocation's port.
+
+Logs append to `.runtime/stdout-windows.log` and `.runtime/stderr-windows.log`, or the corresponding `*-linux.log` files. PID/creation-time records and control locks also live in this ignored directory. Do not copy `.runtime` to another deployment or remove it while the managed server is running. These scripts only manage instances they started, not a server started manually with npm.
+
+Startup waits up to 30 seconds for `/api/settings` and verifies that the exact launched process is still alive. Missing dependencies/build, invalid settings/ports, occupied ports, or startup failures return a nonzero exit code with a diagnostic; startup failures identify the log files. A live unhealthy instance is reported rather than duplicated. Concurrent control commands are rejected; retry after the first completes.
+
+Stopping verifies the PID, process creation time, Node executable and exact project command. It never kills a process merely because it owns a port. Linux sends `SIGTERM`, waits 10 seconds, then uses `SIGKILL` only if the same process remains. Windows stops the verified Node process directly. PID reuse or unverifiable identity blocks stopping and restarting; inspect the record and process before manually removing a record. Missing/dead process records can be cleaned automatically. Do not rename or move a running deployment before stopping it.
+
+Launcher integration tests run real start/stop cycles in disposable project copies with separate configurations. Both Windows PowerShell 5.1 and Rocky Linux 9 (WSL, Linux-native Node.js 24.18.0 and dependencies) have been verified, including spaces/Chinese paths, concurrency, port conflicts, stale identities, and demo-mode restarts.
+
 ## Using the sandbox
 
 ### Central body and spacecraft
@@ -171,6 +223,24 @@ The following endpoints are intended for the local, same-origin application:
 | `DELETE /api/configurations/:id` | Deletes the specified configuration and returns HTTP 204 on success                                                                 |
 
 Errors retain an English `error` diagnostic and add a stable `code` plus optional `params`. The frontend translates the code; Worker errors use the same code/parameter contract. Engine-cutoff reasons are stable enum values translated only for display. Unknown errors show a generic localized message, while diagnostics may remain English.
+
+## Demo mode (read-only configurations)
+
+Edit **`app-config.json`** in the project root beside `package.json`:
+
+```json
+{
+  "demoMode": true
+}
+```
+
+The shipped default is `false`. Restart `npm run dev` or `npm start` after changing it; rebuilding is unnecessary. There is no environment-variable override or UI toggle. A missing file uses normal mode; an omitted `demoMode` also defaults to `false`. Invalid JSON, unknown settings, non-boolean values, or read failures stop startup with a diagnostic and preserve the file.
+
+In demo mode, **Save Configuration**, **Save As**, overwrite, and deletion are disabled. Existing configurations can still be viewed, refreshed, and loaded. Simulation, editing, launch, and maneuvers remain available; changes stay in the current session. Loading another system or leaving the page retains the existing unsaved-change confirmation.
+
+`GET /api/settings` returns `{ "demoMode": boolean }` with caching disabled. The server also rejects configuration `PUT` and `DELETE` requests with HTTP 403 and code `DEMO_MODE_READ_ONLY`, before accessing the store, so bypassing the buttons cannot modify the library. Reading legacy configurations does not migrate or back up the file.
+
+Configuration writes stay disabled while application settings load. If settings cannot be loaded, the interface shows a localized error and **Retry settings** button while the simulation remains available. The English/Chinese demo notice and disabled-button explanations follow the selected UI language.
 
 ## Physics model and numerical methods
 

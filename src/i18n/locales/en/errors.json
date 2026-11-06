@@ -26,5 +26,6 @@
   "SAME_ORIGIN_REQUIRED": "Only same-origin requests are accepted.",
   "API_NOT_FOUND": "API endpoint not found.",
   "REQUEST_TOO_LARGE": "Configuration request is too large.",
-  "INVALID_JSON": "Invalid JSON request."
+  "INVALID_JSON": "Invalid JSON request.",
+  "DEMO_MODE_READ_ONLY": "Configurations are read-only in demo mode."
 }

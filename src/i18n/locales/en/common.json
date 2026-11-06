@@ -64,5 +64,10 @@
   "deleteDescription": "Permanently remove “{{name}}” from the local file? The current scene will stay open.",
   "delete": "Delete Configuration",
   "deleted": "Configuration deleted.",
-  "restoreDefault": "Restore Default Example"
+  "restoreDefault": "Restore Default Example",
+  "demoMode": "Demo mode",
+  "demoReadOnly": "Configurations are read-only in demo mode. You can load existing systems and experiment; changes stay in this session.",
+  "settingsLoading": "Loading application settings… Configuration writes are temporarily disabled.",
+  "settingsUnavailable": "Unable to load application settings. Configuration writes are disabled; the simulation remains available.",
+  "retrySettings": "Retry settings"
 }

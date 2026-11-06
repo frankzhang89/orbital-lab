@@ -64,5 +64,10 @@
   "deleteDescription": "从本地文件中永久删除“{{name}}”？当前场景将保持打开。",
   "delete": "删除配置",
   "deleted": "配置已删除。",
-  "restoreDefault": "恢复默认示例"
+  "restoreDefault": "恢复默认示例",
+  "demoMode": "演示模式",
+  "demoReadOnly": "演示模式下配置库为只读。你可以加载已有系统并自由模拟，修改仅保留在当前会话中。",
+  "settingsLoading": "正在读取应用设置…配置写入暂时不可用。",
+  "settingsUnavailable": "无法读取应用设置，配置写入已禁用，模拟功能仍可使用。",
+  "retrySettings": "重试读取设置"
 }

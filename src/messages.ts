@@ -1,6 +1,7 @@
 /** Stable, language-neutral error contract shared by the server and Worker. */
 export const errorDiagnostics = {
   "UNEXPECTED_ERROR": "An unexpected error occurred. Please try again.",
+  "DEMO_MODE_READ_ONLY": "Configurations are read-only in demo mode.",
   "REQUEST_FAILED": "The request failed.",
   "WORKER_STOPPED": "The simulation worker stopped unexpectedly.",
   "KEPLER_CONVERGENCE": "Orbital propagation could not converge. Reduce the time scale.",

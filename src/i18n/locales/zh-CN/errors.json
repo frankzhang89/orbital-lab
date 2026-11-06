@@ -26,5 +26,6 @@
   "SAME_ORIGIN_REQUIRED": "仅接受同源请求。",
   "API_NOT_FOUND": "未找到 API 接口。",
   "REQUEST_TOO_LARGE": "配置请求过大。",
-  "INVALID_JSON": "JSON 请求无效。"
+  "INVALID_JSON": "JSON 请求无效。",
+  "DEMO_MODE_READ_ONLY": "演示模式下配置库为只读。"
 }

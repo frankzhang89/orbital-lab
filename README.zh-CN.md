@@ -36,6 +36,58 @@ npm test
 
 存储测试使用临时目录，不会修改你的配置文件。安装依赖后，应用可以离线运行：字体、图标和行星视觉效果均由本地提供。
 
+## 后台启动、停止与重启
+
+三个脚本位于项目根目录，与 `package.json` 同级。首次在目标操作系统上准备生产版：
+
+```text
+npm ci
+npm run build
+```
+
+Windows PowerShell 如果阻止 `npm.ps1`，请使用 `npm.cmd`。需安装全部依赖，包括开发依赖，因为服务端需要本地 `tsx` 加载器。Linux 应在 Linux 上安装依赖，不要复制 Windows 的 `node_modules`。
+
+Windows 命令提示符：
+
+```bat
+orbital-lab.cmd start
+orbital-lab.cmd stop
+orbital-lab.cmd restart
+```
+
+PowerShell 中使用 `.\orbital-lab.cmd start`，停止和重启分别替换为 `stop`、`restart`。CMD 入口调用兼容 Windows PowerShell 5.1+ 的 `orbital-lab.ps1`，不加载用户配置；执行策略绕过仅作用于该次子进程，不修改系统策略。服务在后台运行，不弹出额外控制台。
+
+Linux 需要 Bash 4+、`flock`、`nohup` 和 `/proc`：
+
+```bash
+bash ./orbital-lab.sh start
+bash ./orbital-lab.sh stop
+bash ./orbital-lab.sh restart
+```
+
+脚本按自身位置定位项目，可从其他工作目录通过绝对路径调用，支持空格及中文路径。需要 Node.js 22.x 中的 22.12+ 或 Node.js 24+、已安装的依赖与生产构建。脚本不会安装依赖、重新构建、打开浏览器或注册系统服务。源码更新后需手动执行 `npm run build`。
+
+默认地址为 `http://127.0.0.1:5173`，仍仅监听本机。启动或重启前可通过 `PORT` 指定端口：
+
+```powershell
+$env:PORT = "5180"
+.\orbital-lab.cmd start
+```
+
+```bash
+PORT=5180 bash ./orbital-lab.sh start
+```
+
+关闭控制终端后，服务继续运行。每个项目目录管理一个实例；重复 `start` 会报告已有实例的地址。`stop` 按进程记录停止服务，不受当前 `PORT` 影响，未运行时也会成功返回。`restart` 先停止，停止成功后才重新启动，并读取新的 `app-config.json` 和本次端口设置。
+
+日志追加写入 `.runtime/stdout-windows.log`、`.runtime/stderr-windows.log`，Linux 对应为 `*-linux.log`。进程记录和控制锁也保存在此已忽略的目录。部署时不要复制 `.runtime`，服务运行时不要删除它。脚本只管理自己启动的实例，不接管通过 npm 手动启动的服务。
+
+启动最多等待 30 秒，通过 `/api/settings` 和所启动进程的身份确认服务就绪。依赖或构建缺失、设置文件或端口无效、端口被占用、启动失败时，返回非零退出码并给出诊断；启动失败会提示日志位置。已有进程不健康时不会启动第二个实例。并发控制命令会被拒绝，等待前一个命令完成后重试。
+
+停止前校验 PID、进程启动时间、Node 可执行文件和完整项目启动命令，不会仅凭端口结束进程。Linux 先发送 `SIGTERM`，等待 10 秒后，仅对身份仍匹配的进程发送 `SIGKILL`；Windows 直接停止身份验证通过的 Node 进程。PID 被复用或身份无法确认时，拒绝停止与重启；请先检查记录和实际进程，再决定是否手动删除记录。已退出进程的记录可自动清理。移动或重命名部署目录之前，应先停止服务。
+
+集成测试使用临时项目副本和独立配置执行真实启停。已验证 Windows PowerShell 5.1 和 Rocky Linux 9（WSL、Linux 原生 Node.js 24.18.0 及依赖），覆盖空格与中文路径、并发操作、端口冲突、失效进程身份以及 demo 模式重启。
+
 ## 使用沙盒
 
 ### 中心天体与飞行器
@@ -171,6 +223,24 @@ configurations:
 | `DELETE /api/configurations/:id` | 删除指定配置，成功后返回 HTTP 204 |
 
 错误响应保留英文诊断字段 `error`，并增加稳定的 `code` 和可选 `params`，由前端翻译代码。Worker 错误使用相同的代码与参数约定。熄火原因采用稳定枚举，仅在展示时翻译。未知错误使用通用本地化提示，诊断信息可以继续保持英文。
+
+## 演示模式（配置库只读）
+
+编辑项目根目录、与 `package.json` 同级的 **`app-config.json`**：
+
+```json
+{
+  "demoMode": true
+}
+```
+
+随源码提供的默认值为 `false`。修改后重启 `npm run dev` 或 `npm start` 即可生效，无需重新构建；不提供环境变量覆盖或界面开关。文件不存在或省略 `demoMode` 时默认为普通模式。JSON 无效、存在未知设置、值不是布尔类型或文件读取失败时，服务会输出诊断并停止启动，保留原文件。
+
+演示模式下，**保存配置**、**另存为**、覆盖和删除均被禁用；仍可查看、刷新和加载已有配置。模拟、编辑、发射和变轨功能保持可用，修改只保留在当前会话中。加载其他系统或离开页面时，沿用现有的未保存修改确认。
+
+`GET /api/settings` 返回 `{ "demoMode": boolean }` 并禁止缓存。服务端在访问存储层之前，对配置的 `PUT` 和 `DELETE` 请求返回 HTTP 403，错误代码为 `DEMO_MODE_READ_ONLY`；绕过界面按钮也无法修改配置库。读取旧版配置不会触发文件迁移或备份。
+
+读取应用设置期间，配置写入暂时禁用。读取失败时，界面显示本地化错误和**重试读取设置**按钮，模拟功能仍可使用。演示模式标记和禁用原因会随英文／简体中文界面切换。
 
 ## 物理模型与数值方法
 
