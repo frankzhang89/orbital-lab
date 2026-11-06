@@ -1,7 +1,9 @@
+import { DomainError } from "../messages";
 import type {
   BodyState,
   CentralBody,
   CutoffResult,
+  CutoffReason,
   LaunchConfig,
   ManeuverSpec,
   OrbiterConfig,
@@ -118,9 +120,7 @@ export function keplerStep(
   }
   if (!converged) {
     if (Math.abs(dt) < 1e-6)
-      throw new Error(
-        "Orbital propagation could not converge. Reduce the time scale.",
-      );
+      throw new DomainError("KEPLER_CONVERGENCE");
     const half = keplerStep(position, velocity, dt / 2, mu);
     return keplerStep(half.position, half.velocity, dt / 2, mu);
   }
@@ -143,7 +143,7 @@ export function maneuverDirection(
 ): Vec3 {
   const { radial, transverse: tangent, normal } = orbitalFrame(body);
   if (!normal && ["normal", "antinormal", "custom"].includes(spec.direction))
-    throw new Error("Orbital plane is undefined for radial or zero-speed motion. Use prograde or radial thrust first.");
+    throw new DomainError("ORBITAL_PLANE_UNDEFINED");
   const prograde = norm(body.velocity) > 1e-8 ? unit(body.velocity) : tangent;
   switch (spec.direction) {
     case "prograde":
@@ -168,7 +168,7 @@ export function maneuverDirection(
 
 export function applyManeuver(body: BodyState, spec: ManeuverSpec): void {
   if (body.status !== "flying" || (body.launch && !body.launch.cutoff))
-    throw new Error("Select a flying spacecraft with its engine off.");
+    throw new DomainError("CRAFT_ENGINE_REQUIRED_OFF");
   if (spec.mode === "impulse") {
     body.velocity = add(
       body.velocity,
@@ -274,13 +274,11 @@ export function integrateAdaptive(
   let iterations = 0;
   while (t < duration - 1e-10) {
     if (++iterations > 100000)
-      throw new Error(
-        "Integration budget exceeded. Check the simulation parameters.",
-      );
+      throw new DomainError("INTEGRATION_BUDGET");
     h = Math.min(h, duration - t);
     const trial = rkTrial(result, t, h, derivative);
     if (!Number.isFinite(trial.error))
-      throw new Error("Non-finite physical state. Check the input parameters.");
+      throw new DomainError("NON_FINITE_STATE");
     if (trial.error <= 1 || h < 1e-7) {
       result = trial.y;
       t += h;
@@ -367,7 +365,7 @@ function poweredStep(
 function recordCutoff(
   body: BodyState,
   central: CentralBody,
-  reason: string,
+  reason: CutoffReason,
 ): CutoffResult {
   const result = {
     elapsed: body.launch!.elapsed,
@@ -390,7 +388,7 @@ export function abortBurn(body: BodyState, central: CentralBody): void {
     delete body.burn;
   }
   if (body.launch && !body.launch.cutoff)
-    recordCutoff(body, central, "Engine stopped");
+    recordCutoff(body, central, "engineStopped");
 }
 
 // The step size is limited by local dynamics and altitude, so a fast craft cannot
@@ -403,7 +401,7 @@ export function advanceBody(
   let remaining = duration;
   let guard = 0;
   while (remaining > 1e-8) {
-    if (++guard > 100000) throw new Error("Propagation budget exceeded.");
+    if (++guard > 100000) throw new DomainError("PROPAGATION_BUDGET");
     if (
       body.status === "crashed" ||
       (body.status === "landed" && (!body.launch || body.launch.cutoff))
@@ -445,7 +443,7 @@ export function advanceBody(
         recordCutoff(
           body,
           central,
-          activeLaunch.fuel <= 1e-6 ? "Fuel depleted" : "Burn time reached",
+          activeLaunch.fuel <= 1e-6 ? "fuelDepleted" : "burnTimeReached",
         );
       continue;
     }
@@ -475,7 +473,7 @@ export function advanceBody(
       if (activeLaunch) {
         activeLaunch.elapsed += dt;
         activeLaunch.fuel = next.fuel;
-        recordCutoff(body, central, "Surface impact");
+        recordCutoff(body, central, "surfaceImpact");
       }
       if (body.burn) {
         body.burn.elapsed += dt;
@@ -505,7 +503,7 @@ export function advanceBody(
         recordCutoff(
           body,
           central,
-          activeLaunch.fuel < 1e-7 ? "Fuel depleted" : "Burn time reached",
+          activeLaunch.fuel < 1e-7 ? "fuelDepleted" : "burnTimeReached",
         );
     }
     if (body.burn) {

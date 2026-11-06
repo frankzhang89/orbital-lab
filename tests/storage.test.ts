@@ -160,11 +160,16 @@ describe("local HTTP API", () => {
       body: "{bad",
     });
     expect(malformed.status).toBe(400);
+    expect(await malformed.json()).toMatchObject({ code: "INVALID_JSON", error: "Invalid JSON request." });
     const crossOrigin = await fetch(`${base}/api/configurations/test`, {
       method: "DELETE",
       headers: { Origin: "https://unrelated.example" },
     });
     expect(crossOrigin.status).toBe(403);
+    expect(await crossOrigin.json()).toMatchObject({ code: "SAME_ORIGIN_REQUIRED", error: expect.any(String) });
+    const invalidId = await fetch(`${base}/api/configurations/bad.id`, { method: "PUT", headers: { "Content-Type": "application/json", "Accept-Language": "zh-CN" }, body: JSON.stringify(input()) });
+    expect(invalidId.status).toBe(400);
+    expect(await invalidId.json()).toMatchObject({ code: "CONFIG_ID_INVALID", error: "Invalid configuration ID." });
     const deleted = await fetch(`${base}/api/configurations/test`, {
       method: "DELETE",
     });

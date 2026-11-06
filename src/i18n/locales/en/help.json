@@ -1,0 +1,17 @@
+{
+  "title": "Welcome to Orbital Lab",
+  "close": "Close help",
+  "intro": "Explore three-dimensional orbits governed by Newtonian gravity.",
+  "worldTitle": "Set your world.",
+  "world": "Edit the central body's mass and radius, then apply.",
+  "orbitTitle": "Build an orbit.",
+  "orbit": "Add spacecraft. Altitude and circular velocity are linked; applying resets that craft to a circular orbit.",
+  "maneuverTitle": "Change your trajectory.",
+  "maneuver": "Preview a delta-v under Maneuver, then execute an instant impulse or finite ideal burn.",
+  "launchTitle": "Launch from the surface.",
+  "launch": "Set vehicle and pitch-program parameters. A high apoapsis alone does not mean a stable orbit: periapsis must clear the surface.",
+  "saveTitle": "Keep your experiments.",
+  "save": "Save named initial configurations to the local JSON file. Live flight state is not saved.",
+  "model": "The central body is fixed and non-rotating. There is no atmosphere, mutual gravity, staging, or automatic orbit insertion. Custom 0° points along the local transverse direction of motion. Use Normal / Anti-normal for manual plane changes or Inclination to target a node impulse. Finite burns track local direction and do not consume fuel; launches do.",
+  "controls": "Drag to rotate · Right-drag to pan · Scroll to zoom · Space to play/pause. All internal calculations use {{distanceUnit}}, {{massUnit}} and {{timeUnit}}."
+}

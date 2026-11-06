@@ -1,3 +1,4 @@
+import type { ErrorPayload } from "./messages";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { DEFAULT_SCENE } from "./defaults";
 import { createOrbiter } from "./physics/core";
@@ -8,7 +9,7 @@ import type {
   WorkerResponse,
 } from "./types";
 
-export function useSimulation(onError: (message: string) => void) {
+export function useSimulation(onError: (error: ErrorPayload) => void) {
   const workerRef = useRef<Worker | null>(null);
   const errorRef = useRef(onError);
   errorRef.current = onError;
@@ -38,11 +39,11 @@ export function useSimulation(onError: (message: string) => void) {
         data.prediction.id === requestIdRef.current
       )
         setPrediction(data.prediction);
-      if (data.type === "error") errorRef.current(data.message);
+      if (data.type === "error") errorRef.current(data);
     };
     worker.onerror = (event) =>
       errorRef.current(
-        event.message || "The simulation worker stopped unexpectedly.",
+        { code: "WORKER_STOPPED", message: event.message || "The simulation worker stopped unexpectedly." },
       );
     worker.postMessage({
       type: "reset",

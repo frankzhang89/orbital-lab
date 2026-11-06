@@ -2,7 +2,7 @@
 
 **English** | [简体中文](README.zh-CN.md)
 
-A three-dimensional orbital mechanics sandbox with a single configurable central body. Create inclined circular orbits, preview impulsive and finite maneuvers, schedule shape-preserving inclination changes at equatorial nodes, and launch a single-stage rocket from any surface location. The interface remains in English; documentation is available in English and Simplified Chinese.
+A three-dimensional orbital mechanics sandbox with a single configurable central body. Create inclined circular orbits, preview impulsive and finite maneuvers, schedule shape-preserving inclination changes at equatorial nodes, and launch a single-stage rocket from any surface location. The interface switches between English and Simplified Chinese; documentation is available in both languages.
 
 ![Orbital Lab interface preview](docs/orbital-lab-3d.jpg)
 
@@ -56,6 +56,24 @@ Drag to rotate the view, right-drag (or modified left-drag) to pan, scroll to zo
 The frame is right-handed: **XY is the fixed equatorial plane, +Z is north, and +X is the longitude reference**. AN and DN mark ascending and descending equatorial crossings. Orbits, markers, and labels behind the planet are occluded, so use the spacecraft list to select a hidden craft. The bottom controls let you play, pause, advance by one second, or restore the current configuration's initial state. Press Space to play or pause when you are not interacting with an input or button.
 
 `1× / 10× / 100× / 1000×` select the requested time scale. Under heavy load, the physics engine reduces the effective simulation speed and reports it in the status bar rather than skipping impact or engine-cutoff events.
+
+### Interface language
+
+Use the language selector in the header to switch between `English` and `简体中文`. The first visit defaults to English, independently of browser language. The choice is saved in `localStorage` as `orbital-lab.language`; disabled browser storage still permits switching for the current session. Language selectors are also available in dialog headers, so an open dialog can be translated without losing its draft.
+
+Switching updates field labels, help, notifications, accessible names, scene annotations and the page title. It preserves simulation time, playback, active burns, pending maneuvers, camera position and editor drafts. User-entered names and preset proper names are preserved. Displayed numbers and dates follow the selected locale; timestamps retain the browser's time zone. Numeric input keeps ungrouped decimal-point parsing, and mission elapsed time remains a duration.
+
+**SI unit names, symbols and compound expressions are invariant.** `m`, `km`, `kg`, `s`, `kN`, `m/s`, `m/s²` and `×10²⁴ kg` remain unchanged in both languages, as do `°` and `deg`. Language selection never converts physical values or unit systems. Unit notation is defined separately in `src/i18n/units.ts` and passed into messages as parameters.
+
+English resources ship with the main application; Chinese resources are loaded on demand from local build files. No external translation service is used. Missing or empty entries and missing namespaces fall back to English. A missing, empty or failed complete language bundle switches the effective language, selector and saved preference back to English. Unsupported preferences, including the reserved French entry, also resolve to English. Right-to-left layouts are outside this release.
+
+#### Adding a language
+
+1. Add `common.json`, `sandbox.json`, `help.json` and `errors.json` under `src/i18n/locales/<code>/`, using the English semantic keys and the same interpolation parameters. Keep whole sentences together and use plural base keys with `count`.
+2. Add a registration in `src/i18n/languages.ts` with the language code, native name, `formatLocale`, a loader for those four bundled files and `enabled: true`. French (`fr`, `Français`, `fr-FR`) already has a disabled registration; add its resources and loader before enabling it. No French translation files or selectable French option ship in this version.
+3. Run the translation completeness tests, update the reserved-language assertion when intentionally enabling French, and rebuild the application. Business components do not need language-specific branches. Adding locale-specific decimal input rules belongs in the common input layer rather than individual panels.
+
+English resources define translation-key types. `npm test` checks key coverage, interpolation parameters, plurals, fallback, storage failures, stable error codes and unit invariance. Notifications and dialogs store message references and parameters, rather than already translated strings. The physics engine and local server produce language-neutral codes and do not load translation resources. Configuration format version 2 and its saved initial-state scope are unchanged.
 
 ### Text size and high-resolution displays
 
@@ -152,6 +170,8 @@ The following endpoints are intended for the local, same-origin application:
 | `PUT /api/configurations/:id`    | Accepts `{name, central, orbiters}`, creates or replaces the configuration, and returns the record with its ID and update timestamp |
 | `DELETE /api/configurations/:id` | Deletes the specified configuration and returns HTTP 204 on success                                                                 |
 
+Errors retain an English `error` diagnostic and add a stable `code` plus optional `params`. The frontend translates the code; Worker errors use the same code/parameter contract. Engine-cutoff reasons are stable enum values translated only for display. Unknown errors show a generic localized message, while diagnostics may remain English.
+
 ## Physics model and numerical methods
 
 - The central body is fixed, non-rotating, and spherically symmetric. Orbiting objects are test particles and do not interact with one another.
@@ -177,6 +197,9 @@ src/physics/timeline.ts          Event-aligned advancement and scheduled maneuve
 src/physics/core.ts              UI-independent physics and orbital mechanics
 src/physics/simulation.worker.ts Simulation clock, trajectory prediction, and cancellation
 src/useSimulation.ts             Worker communication
+src/messages.ts                  Shared language-neutral errors and diagnostic messages
+src/i18n/                        Bundled locales, registry, message references and formatting
+src/components/LanguageSettings.tsx Language selector, including in open dialogs
 src/components/Universe.tsx      Three.js rendering and view controls
 src/components/Fields.tsx        Parameter inputs and telemetry components
 src/App.tsx                      English interface and user interactions

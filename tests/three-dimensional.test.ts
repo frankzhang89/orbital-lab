@@ -208,7 +208,7 @@ describe("three-dimensional launch sites and headings", () => {
   it("keeps vertical flights radial at any site and aligns fuel depletion", () => {
     const config = { ...DEFAULT_LAUNCH, latitude: 63, longitude: -120, pitch: 90, burnTime: 1000, fuelMass: 1000 };
     const b = cutoff(config);
-    expect(b.launch!.cutoff!.reason).toBe("Fuel depleted");
+    expect(b.launch!.cutoff!.reason).toBe("fuelDepleted");
     expect(b.launch!.cutoff!.orbit.inclination).toBeNull();
     expect(norm(cross(unit(b.position), unit(b.velocity)))).toBeLessThan(1e-10);
   });

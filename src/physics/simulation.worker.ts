@@ -1,4 +1,5 @@
 /// <reference lib="webworker" />
+import { DomainError, toErrorPayload } from "../messages";
 import type {
   BodyState,
   Prediction,
@@ -76,7 +77,7 @@ async function predict(command: Extract<WorkerCommand, { type: "predict" }>) {
       await waitForMessages();
       if (token !== predictionToken) return;
     }
-    if (steps > 15000) throw new Error("Prediction exceeded its time limit.");
+    if (steps > 15000) throw new DomainError("PREDICTION_LIMIT");
   }
   const orbit = orbitSummary(body, central);
   if (body.status === "flying") {
@@ -111,7 +112,7 @@ self.onmessage = (event: MessageEvent<WorkerCommand>) => {
   try {
     if (command.type === "predict") {
       void predict(command).catch((error) =>
-        send({ type: "error", message: String(error.message ?? error) }),
+        send({ type: "error", ...toErrorPayload(error) }),
       );
       return;
     }
@@ -188,7 +189,7 @@ self.onmessage = (event: MessageEvent<WorkerCommand>) => {
     state.running = false;
     send({
       type: "error",
-      message: error instanceof Error ? error.message : String(error),
+      ...toErrorPayload(error),
     });
     publish();
   }
@@ -217,7 +218,7 @@ setInterval(() => {
     state.running = false;
     send({
       type: "error",
-      message: error instanceof Error ? error.message : String(error),
+      ...toErrorPayload(error),
     });
     publish();
   }

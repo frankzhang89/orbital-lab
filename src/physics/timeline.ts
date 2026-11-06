@@ -1,3 +1,4 @@
+import { DomainError } from "../messages";
 import type { Snapshot, PlaneChangePlan } from "../types";
 import { advanceBody, orbitSummary } from "./core";
 import { norm, sub } from "./vector";
@@ -6,8 +7,8 @@ import { planPlaneChange } from "./planeChange";
 export function schedulePlaneChange(state: Snapshot, plan: PlaneChangePlan): void {
   const body = state.bodies.find((b) => b.id === plan.bodyId);
   if (!body || plan.revision !== state.revision || Math.abs(plan.epoch - state.time) > 1e-7)
-    throw new Error("The plane-change preview is out of date. Preview again before executing.");
-  if (state.pendingPlaneChange) throw new Error("Cancel the existing plane change before scheduling another.");
+    throw new DomainError("STALE_PREVIEW");
+  if (state.pendingPlaneChange) throw new DomainError("PLAN_ALREADY_PENDING");
   // Recompute rather than trusting vectors supplied by the interface.
   state.pendingPlaneChange = planPlaneChange(body, state.central, plan.targetInclination, state.time, state.revision);
   delete state.planeChangeResult;

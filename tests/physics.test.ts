@@ -241,7 +241,7 @@ describe("launch propulsion and guidance", () => {
   it("stops exactly on timed cutoff with fuel remaining", () => {
     const body = launchUntilCutoff({ ...DEFAULT_LAUNCH, burnTime: 17.25 });
     expect(body.launch!.cutoff!.elapsed).toBeCloseTo(17.25, 8);
-    expect(body.launch!.cutoff!.reason).toBe("Burn time reached");
+    expect(body.launch!.cutoff!.reason).toBe("burnTimeReached");
     expect(body.launch!.fuel).toBeGreaterThan(0);
   });
   it("stops exactly at propellant exhaustion, even inside a large step", () => {
@@ -251,7 +251,7 @@ describe("launch propulsion and guidance", () => {
       (cfg.fuelMass * cfg.isp * G0) / cfg.thrust,
       7,
     );
-    expect(body.launch!.cutoff!.reason).toBe("Fuel depleted");
+    expect(body.launch!.cutoff!.reason).toBe("fuelDepleted");
     expect(body.launch!.fuel).toBeCloseTo(0, 6);
   });
   it("holds a weak engine on the pad while consuming fuel", () => {

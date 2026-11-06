@@ -1,3 +1,4 @@
+import { DomainError, type ErrorCode } from "../src/messages";
 import { readFile, writeFile, rename, unlink } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -70,12 +71,12 @@ const legacySaved = z.object({
 const legacyFile = z.object({ version: z.literal(1), configurations: z.array(legacySaved).max(500) }).strict()
   .refine((value) => new Set(value.configurations.map((c) => c.id)).size === value.configurations.length);
 
-export class StoreError extends Error {
+export class StoreError extends DomainError {
   constructor(
-    message: string,
+    code: ErrorCode,
     public status = 500,
   ) {
-    super(message);
+    super(code);
   }
 }
 
@@ -96,7 +97,7 @@ export class ConfigurationStore {
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
       throw new StoreError(
-        "Unable to read celestial-configs.json. Check file permissions.",
+        "CONFIG_READ_FAILED",
       );
     }
     try {
@@ -112,7 +113,7 @@ export class ConfigurationStore {
       return fileSchema.parse(parsed).configurations;
     } catch {
       throw new StoreError(
-        "celestial-configs.json is damaged or uses an unsupported format. The file has been preserved.",
+        "CONFIG_DAMAGED",
       );
     }
   }
@@ -142,7 +143,7 @@ export class ConfigurationStore {
     } catch {
       await unlink(temporaryPath).catch(() => undefined);
       throw new StoreError(
-        "Unable to save celestial-configs.json. Check disk space and file permissions.",
+        "CONFIG_SAVE_FAILED",
       );
     }
   }
@@ -151,12 +152,12 @@ export class ConfigurationStore {
     if (!parsed.success)
       return Promise.reject(
         new StoreError(
-          "Invalid configuration. Check names, masses, radii, altitudes, phases, inclinations and ascending nodes.",
+          "CONFIG_INVALID",
           400,
         ),
       );
     if (!/^[a-zA-Z0-9_-]{1,100}$/.test(id))
-      return Promise.reject(new StoreError("Invalid configuration ID.", 400));
+      return Promise.reject(new StoreError("CONFIG_ID_INVALID", 400));
     return this.serialize(async () => {
       const configurations = await this.read();
       const record = {
@@ -168,7 +169,7 @@ export class ConfigurationStore {
       if (index >= 0) configurations[index] = record;
       else {
         if (configurations.length >= 500)
-          throw new StoreError("The configuration library is full.", 400);
+          throw new StoreError("CONFIG_LIBRARY_FULL", 400);
         configurations.push(record);
       }
       await this.write(configurations);
@@ -179,7 +180,7 @@ export class ConfigurationStore {
     return this.serialize(async () => {
       const configurations = await this.read();
       if (!configurations.some((c) => c.id === id))
-        throw new StoreError("Configuration not found.", 404);
+        throw new StoreError("CONFIG_NOT_FOUND", 404);
       await this.write(configurations.filter((c) => c.id !== id));
     });
   }

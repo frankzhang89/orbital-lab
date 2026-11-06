@@ -17,6 +17,7 @@ export function NumberField({
   max?: number;
   step?: number | "any";
 }) {
+  // Keep the raw decimal draft across label changes and language-selector focus.
   const [text, setText] = useState(String(Number(value.toPrecision(10))));
   useEffect(() => {
     setText((previous) =>
@@ -42,7 +43,6 @@ export function NumberField({
             if (raw.trim() !== "" && Number.isFinite(Number(raw)))
               onChange(Number(raw));
           }}
-          onBlur={() => setText(String(Number(value.toPrecision(10))))}
         />
         {unit && <span className="input-unit">{unit}</span>}
       </div>
@@ -84,13 +84,7 @@ export function SectionTitle({
     </div>
   );
 }
-export const formatNumber = (value: number, digits = 1) =>
-  Number.isFinite(value)
-    ? value.toLocaleString("en-US", {
-        maximumFractionDigits: digits,
-        minimumFractionDigits: digits,
-      })
-    : "—";
+export { formatNumber } from "../i18n/format";
 export const formatTime = (seconds: number) => {
   const s = Math.max(0, Math.floor(seconds));
   return `${String(Math.floor(s / 3600)).padStart(2, "0")}:${String(Math.floor(s / 60) % 60).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;

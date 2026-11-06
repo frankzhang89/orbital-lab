@@ -1,3 +1,4 @@
+import type { ErrorPayload } from "./messages";
 export type Vec3 = [number, number, number];
 export interface CentralBody {
   name: string;
@@ -51,13 +52,14 @@ export interface LaunchConfig {
   longitude: number;
   azimuth: number;
 }
+export type CutoffReason = "fuelDepleted" | "burnTimeReached" | "surfaceImpact" | "engineStopped";
 export interface CutoffResult {
   elapsed: number;
   altitude: number;
   speed: number;
   fuel: number;
   orbit: OrbitSummary;
-  reason: string;
+  reason: CutoffReason;
 }
 export interface LaunchState {
   config: LaunchConfig;
@@ -150,4 +152,4 @@ export type WorkerCommand =
 export type WorkerResponse =
   | { type: "snapshot"; snapshot: Snapshot }
   | { type: "prediction"; prediction: Prediction }
-  | { type: "error"; message: string };
+  | ({ type: "error" } & ErrorPayload);

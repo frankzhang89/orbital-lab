@@ -1,3 +1,4 @@
+import { DomainError } from "../messages";
 import type { BodyState, CentralBody, EquatorialNode, PlaneChangePlan, Vec3 } from "../types";
 import { advanceBody, keplerStep, muOf } from "./core";
 import { orbitalFrame, RAD } from "./frames";
@@ -69,15 +70,15 @@ export function nextEquatorialNode(body: BodyState, central: CentralBody): Equat
 
 export function planPlaneChange(body: BodyState, central: CentralBody, targetInclination: number, epoch: number, revision: number): PlaneChangePlan {
   if (!Number.isFinite(targetInclination) || targetInclination < 0 || targetInclination > 180)
-    throw new Error("Target inclination must be between 0° and 180°.");
+    throw new DomainError("TARGET_INCLINATION_INVALID");
   if (body.burn || (body.launch && !body.launch.cutoff))
-    throw new Error("Stop the engine before planning a plane change.");
+    throw new DomainError("ENGINE_ACTIVE");
   const node = nextEquatorialNode(body, central);
-  if (!node) throw new Error("No future equatorial node exists, or the orbital plane is undefined.");
+  if (!node) throw new DomainError("NO_FUTURE_NODE");
   const at = structuredClone(body);
   advanceBody(at, central, node.delay);
   if (at.status !== "flying" || norm(at.position) <= central.radius)
-    throw new Error("The spacecraft will hit the surface before reaching the node.");
+    throw new DomainError("IMPACT_BEFORE_NODE");
   const { radial, normal: oldNormal } = orbitalFrame(at);
   const horizontal = unit(cross([0, 0, 1], radial));
   const i = targetInclination * RAD;

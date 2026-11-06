@@ -1,3 +1,4 @@
+import { errorDiagnostics } from "../src/messages";
 import express, { type ErrorRequestHandler } from "express";
 import { ConfigurationStore, StoreError } from "./store";
 
@@ -10,7 +11,7 @@ export function createApp(store: ConfigurationStore) {
     if (origin && origin !== `http://${req.headers.host}`) {
       res
         .status(403)
-        .json({ error: "Only same-origin requests are accepted." });
+        .json({ code: "SAME_ORIGIN_REQUIRED", error: errorDiagnostics.SAME_ORIGIN_REQUIRED });
       return;
     }
     res.setHeader("Cache-Control", "no-store");
@@ -28,7 +29,7 @@ export function createApp(store: ConfigurationStore) {
     res.status(204).end();
   });
   app.use("/api", (_req, res) => {
-    res.status(404).json({ error: "API endpoint not found." });
+    res.status(404).json({ code: "API_NOT_FOUND", error: errorDiagnostics.API_NOT_FOUND });
   });
   const errorHandler: ErrorRequestHandler = (error, _req, res, _next) => {
     const status =
@@ -39,18 +40,8 @@ export function createApp(store: ConfigurationStore) {
           : error instanceof SyntaxError
             ? 400
             : 500;
-    res
-      .status(status)
-      .json({
-        error:
-          error instanceof StoreError
-            ? error.message
-            : status === 413
-              ? "Configuration request is too large."
-              : status === 400
-                ? "Invalid JSON request."
-                : "An unexpected server error occurred.",
-      });
+    const code = error instanceof StoreError ? error.code : status === 413 ? "REQUEST_TOO_LARGE" : status === 400 ? "INVALID_JSON" : "UNEXPECTED_ERROR";
+    res.status(status).json({ code, error: error instanceof StoreError ? error.message : errorDiagnostics[code], params: error instanceof StoreError ? error.params : undefined });
   };
   app.use(errorHandler);
   return app;

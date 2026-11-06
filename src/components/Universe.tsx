@@ -1,3 +1,7 @@
+import { tx, msg, renderMessage, useLocale, type MessageRef, type TranslationKey } from "../i18n";
+import { bodyName } from "../i18n/messages";
+import { SI } from "../i18n/units";
+import { formatNumber as fmt } from "../i18n/format";
 import { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
@@ -20,7 +24,8 @@ interface Label {
   id: string; x: number; y: number; name: string; color: string;
   selected?: boolean; sub?: string; craft?: boolean;
 }
-type View = "Top" | "Front" | "Side" | "Orbit Plane";
+const viewLabels = { top: "sandbox:viewTop", front: "sandbox:viewFront", side: "sandbox:viewSide", orbitPlane: "sandbox:viewOrbitPlane" } as const satisfies Record<string, TranslationKey>;
+type View = "top" | "front" | "side" | "orbitPlane";
 interface SceneControls {
   zoom: (factor: number) => void; fit: () => void; center: () => void;
   view: (view: View) => void;
@@ -31,6 +36,7 @@ interface Props {
 }
 
 export function Universe(props: Props) {
+  useLocale();
   const { snapshot, prediction, onSelect } = props;
   const host = useRef<HTMLDivElement>(null);
   const latest = useRef(props);
@@ -44,13 +50,13 @@ export function Universe(props: Props) {
   const [reference, setReference] = useState(true);
   const referenceRef = useRef(true);
   referenceRef.current = reference;
-  const [webglError, setWebglError] = useState("");
+  const [webglError, setWebglError] = useState<MessageRef | "">("");
 
   useEffect(() => {
     const element = host.current!;
     let renderer: THREE.WebGLRenderer;
     try { renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true }); }
-    catch { setWebglError("WebGL is unavailable. Enable hardware acceleration to view the simulation."); return; }
+    catch { setWebglError(msg("errors:WEBGL_UNAVAILABLE")); return; }
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     renderer.setClearColor(0x080e18, 1);
     element.prepend(renderer.domElement);
@@ -150,7 +156,7 @@ export function Universe(props: Props) {
       view(view) {
         const b = latest.current.snapshot.bodies.find((b) => b.id === latest.current.selectedId);
         const n = b ? orbitalFrame(b).normal : null;
-        look(view === "Top" ? new THREE.Vector3(0, -1e-6, 1) : view === "Front" ? new THREE.Vector3(0, -1, 0) : view === "Side" ? new THREE.Vector3(1, 0, 0) : n ? new THREE.Vector3(...n).add(new THREE.Vector3(0, -1e-6, 0)) : new THREE.Vector3(0, -1e-6, 1));
+        look(view === "top" ? new THREE.Vector3(0, -1e-6, 1) : view === "front" ? new THREE.Vector3(0, -1, 0) : view === "side" ? new THREE.Vector3(1, 0, 0) : n ? new THREE.Vector3(...n).add(new THREE.Vector3(0, -1e-6, 0)) : new THREE.Vector3(0, -1e-6, 1));
       },
     };
     const observer = new ResizeObserver((entries) => {
@@ -232,14 +238,14 @@ export function Universe(props: Props) {
           const point = project(p);
           if (point.visible && point.x > 0 && point.x < width && point.y > 0 && point.y < height) nextLabels.push({ ...label, x: point.x, y: point.y });
         };
-        s.bodies.forEach((b) => addLabel(b.position, { id: b.id, name: b.name, color: b.color, selected: b.id === selectedId, craft: true, sub: b.id === selectedId ? `${((norm(b.position) - s.central.radius) / 1000).toFixed(0)} km` : undefined }));
+        s.bodies.forEach((b) => addLabel(b.position, { id: b.id, name: bodyName(b), color: b.color, selected: b.id === selectedId, craft: true, sub: b.id === selectedId ? `${fmt((norm(b.position) - s.central.radius) / 1000, 0)} ${SI.altitude}` : undefined }));
         if (body && body.status === "flying") {
           const h = cross(body.position, body.velocity), p = dot(h, h) / muOf(s.central);
           const evec = sub(scale(cross(body.velocity, h), 1 / muOf(s.central)), unit(body.position)), e = norm(evec);
           if (e > 1e-5 && p > 1e-5) {
             const peri = scale(unit(evec), p / (1 + e));
-            if (norm(peri) >= s.central.radius) addLabel(peri, { id: "peri", name: "Pe", color: "#a4b4c8", sub: `${((norm(peri) - s.central.radius) / 1000).toFixed(0)} km` });
-            if (e < 0.99999) { const apo = scale(unit(evec), -p / (1 - e)); addLabel(apo, { id: "apo", name: "Ap", color: "#a4b4c8", sub: `${((norm(apo) - s.central.radius) / 1000).toFixed(0)} km` }); }
+            if (norm(peri) >= s.central.radius) addLabel(peri, { id: "peri", name: tx("sandbox:periMarker"), color: "#a4b4c8", sub: `${fmt((norm(peri) - s.central.radius) / 1000, 0)} ${SI.altitude}` });
+            if (e < 0.99999) { const apo = scale(unit(evec), -p / (1 - e)); addLabel(apo, { id: "apo", name: tx("sandbox:apoMarker"), color: "#a4b4c8", sub: `${fmt((norm(apo) - s.central.radius) / 1000, 0)} ${SI.altitude}` }); }
           }
           const n = orbitalFrame(body).normal;
           if (n) {
@@ -254,8 +260,8 @@ export function Universe(props: Props) {
             }
           }
         }
-        if (plan) addLabel(plan.node.position, { id: "burn-node", name: `✦ Plane change${plan.node.kind === "equatorial" ? "" : plan.node.kind === "ascending" ? " · AN" : " · DN"}`, color: "#f6dfa5", sub: `T− ${Math.max(0, plan.nodeTime - s.time).toFixed(1)} s` });
-        if (referenceRef.current) addLabel([0, 0, s.central.radius * 2.4], { id: "north", name: "+Z · NORTH", color: "#749fbc" });
+        if (plan) addLabel(plan.node.position, { id: "burn-node", name: tx("sandbox:burnMarker", { node: plan.node.kind === "equatorial" ? "" : plan.node.kind === tx("sandbox:ascending") ? " · AN" : " · DN" }), color: "#f6dfa5", sub: `T− ${fmt(Math.max(0, plan.nodeTime - s.time), 1)} s` });
+        if (referenceRef.current) addLabel([0, 0, s.central.radius * 2.4], { id: "north", name: tx("sandbox:north"), color: "#749fbc" });
         setLabels(nextLabels); setScaleKm(unitsPerPixel * 90 * UNIT / 1000); lastLabels = now;
       }
       renderer.render(scene, camera); requestAnimationFrame(animate);
@@ -271,20 +277,20 @@ export function Universe(props: Props) {
     };
   }, []);
 
-  return <div className="universe" ref={host} aria-label="Interactive 3D orbital view">
-    <div className="scene-heading"><span className="overline">FLIGHT DYNAMICS / 3D</span><div><span className="tiny-dot" />{snapshot.central.name.toUpperCase()}-CENTERED INERTIAL · XY EQUATOR</div></div>
+  return <div className="universe" ref={host} aria-label={tx("sandbox:interactiveView")}>
+    <div className="scene-heading"><span className="overline">{tx("sandbox:flightDynamics")}</span><div><span className="tiny-dot" />{tx("sandbox:inertialFrame", { name: snapshot.central.name.toUpperCase() })}</div></div>
     <div className="view-tools">
-      <button className={`icon-button ${follow ? "active" : ""}`} title="Follow selected spacecraft" aria-label="Follow selected spacecraft" onClick={() => setFollow((v) => !v)}><Focus size={16} /></button>
-      <button className="icon-button" title="Center on planet" aria-label="Center on planet" onClick={() => controlsRef.current?.center()}><Crosshair size={16} /></button>
-      <button className="icon-button" title="Fit all spacecraft" aria-label="Fit all spacecraft" onClick={() => controlsRef.current?.fit()}><Scan size={16} /></button>
-      <button className="icon-button" title="Zoom in" aria-label="Zoom in" onClick={() => controlsRef.current?.zoom(0.8)}><Plus size={16} /></button>
-      <button className="icon-button" title="Zoom out" aria-label="Zoom out" onClick={() => controlsRef.current?.zoom(1.25)}><Minus size={16} /></button>
-      <button className={`icon-button ${reference ? "active" : ""}`} title="Toggle reference plane and north axis" aria-label="Toggle reference plane and north axis" onClick={() => setReference((v) => !v)}><Layers3 size={16} /></button>
+      <button className={`icon-button ${follow ? "active" : ""}`} title={tx("sandbox:follow")} aria-label={tx("sandbox:follow")} onClick={() => setFollow((v) => !v)}><Focus size={16} /></button>
+      <button className="icon-button" title={tx("sandbox:center")} aria-label={tx("sandbox:center")} onClick={() => controlsRef.current?.center()}><Crosshair size={16} /></button>
+      <button className="icon-button" title={tx("sandbox:fitAll")} aria-label={tx("sandbox:fitAll")} onClick={() => controlsRef.current?.fit()}><Scan size={16} /></button>
+      <button className="icon-button" title={tx("sandbox:zoomIn")} aria-label={tx("sandbox:zoomIn")} onClick={() => controlsRef.current?.zoom(0.8)}><Plus size={16} /></button>
+      <button className="icon-button" title={tx("sandbox:zoomOut")} aria-label={tx("sandbox:zoomOut")} onClick={() => controlsRef.current?.zoom(1.25)}><Minus size={16} /></button>
+      <button className={`icon-button ${reference ? "active" : ""}`} title={tx("sandbox:toggleReference")} aria-label={tx("sandbox:toggleReference")} onClick={() => setReference((v) => !v)}><Layers3 size={16} /></button>
     </div>
-    <div className="view-presets" aria-label="Camera presets">{(["Top", "Front", "Side", "Orbit Plane"] as const).map((view) => <button key={view} onClick={() => controlsRef.current?.view(view)}>{view}</button>)}</div>
+    <div className="view-presets" aria-label={tx("sandbox:cameraPresets")}>{(["top", "front", "side", "orbitPlane"] as const).map((view) => <button key={view} onClick={() => controlsRef.current?.view(view)}>{tx(viewLabels[view])}</button>)}</div>
     <div className="scene-labels">{labels.map((label) => label.craft ? <button key={`craft-${label.id}`} className={`space-label ${label.selected ? "selected" : ""}`} style={{ left: label.x, top: label.y, "--body-color": label.color } as React.CSSProperties} onClick={() => onSelect(label.id)}><span>{label.name}</span>{label.sub && <small>{label.sub}</small>}</button> : <div key={`annotation-${label.id}`} className="space-label apsis-label" style={{ left: label.x, top: label.y, "--body-color": label.color } as React.CSSProperties}><span>{label.name}</span>{label.sub && <small>{label.sub}</small>}</div>)}</div>
-    {webglError && <div className="webgl-error">{webglError}</div>}
-    <div className="scene-bottom"><span><i className="legend-line" /> Orbit <i className="legend-line trail" /> Trail {prediction && <><i className="legend-line prediction" /> Preview</>}</span><span className="scale-bar">{scaleKm >= 1000 ? `${(scaleKm / 1000).toFixed(1)}k` : scaleKm.toFixed(0)} km<div /></span></div>
-    <div className="scene-instruction">Drag to rotate <span>·</span> Right-drag to pan <span>·</span> Scroll to zoom <span>·</span> Click to inspect</div>
+    {webglError && <div className="webgl-error">{renderMessage(webglError)}</div>}
+    <div className="scene-bottom"><span><i className="legend-line" />{" "}{tx("sandbox:orbitTab")}{" "}<i className="legend-line trail" />{" "}{tx("sandbox:trail")}{" "}{prediction && <><i className="legend-line prediction" />{" "}{tx("sandbox:preview")}</>}</span><span className="scale-bar">{scaleKm >= 1000 ? `${fmt(scaleKm / 1000, 1)}k` : fmt(scaleKm, 0)}{" "}{SI.altitude}<div /></span></div>
+    <div className="scene-instruction">{tx("sandbox:rotate")}{" "}<span>·</span>{" "}{tx("sandbox:pan")}{" "}<span>·</span>{" "}{tx("sandbox:zoom")}{" "}<span>·</span>{" "}{tx("sandbox:inspect")}</div>
   </div>;
 }

@@ -1,3 +1,7 @@
+import { LanguageSettings } from "./LanguageSettings";
+import { tx, useLocale } from "../i18n";
+import { formatNumber as fmt } from "../i18n/format";
+import { SI } from "../i18n/units";
 import { useLayoutEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { Type, X } from "lucide-react";
@@ -15,6 +19,7 @@ function readTextSize(): number {
 }
 
 export function TextSizeSettings() {
+  useLocale();
   const [textSize, setTextSize] = useState(readTextSize);
   const [open, setOpen] = useState(false);
 
@@ -52,14 +57,14 @@ export function TextSizeSettings() {
     <>
       <button
         className="button subtle text-size-button"
-        aria-label="Text size"
+        aria-label={tx("common:textSize")}
         aria-haspopup="dialog"
         aria-expanded={open}
-        title={`Text size: ${textSize}%`}
+        title={tx("common:textSizeTitle", { size: textSize })}
         onClick={() => setOpen(true)}
       >
         <Type size={18} />
-        <span>Text size</span>
+        <span>{tx("common:textSize")}</span>
       </button>
       {open &&
         createPortal(
@@ -83,24 +88,22 @@ export function TextSizeSettings() {
               aria-describedby="text-size-description"
             >
               <div className="modal-heading">
-                <h2 id="text-size-title">Text size</h2>
+                <h2 id="text-size-title">{tx("common:textSize")}</h2>
+                <LanguageSettings />
                 <button
                   className="icon-button"
-                  aria-label="Close text size settings"
+                  aria-label={tx("common:closeTextSize")}
                   onClick={() => setOpen(false)}
                 >
                   <X size={18} />
                 </button>
               </div>
-              <p className="panel-description" id="text-size-description">
-                Make the interface easier to read on high-resolution displays.
-                Labels, controls, and panels resize together.
-              </p>
+              <p className="panel-description" id="text-size-description">{tx("common:textSizeDescription")}</p>
               <label className="field">
-                <span>Interface text size</span>
+                <span>{tx("common:interfaceTextSize")}</span>
                 <select
                   autoFocus
-                  aria-label="Interface text size"
+                  aria-label={tx("common:interfaceTextSize")}
                   value={textSize}
                   onChange={(event) => setTextSize(Number(event.target.value))}
                 >
@@ -108,37 +111,30 @@ export function TextSizeSettings() {
                     <option key={size} value={size}>
                       {size}%
                       {size === 100
-                        ? " · Default"
+                        ? tx("common:textSizeDefault")
                         : size === 200
-                          ? " · Suggested for 4K"
+                          ? tx("common:textSize4k")
                           : ""}
                     </option>
                   ))}
                 </select>
               </label>
               <div className="text-size-preview">
-                <span className="overline">LIVE PREVIEW · {textSize}%</span>
-                <h3>Your next orbit starts here.</h3>
-                <p>Altitude 800.0 km · Velocity 7,456 m/s</p>
+                <span className="overline">{tx("common:textSizeLive", { size: textSize })}</span>
+                <h3>{tx("common:textSizePreviewTitle")}</h3>
+                <p>{tx("common:textSizePreview", { altitude: fmt(800), speed: fmt(7456, 0), distanceUnit: SI.altitude, speedUnit: SI.speed })}</p>
               </div>
-              <p className="footnote">
-                Changes apply immediately and are saved in this browser. Your
-                simulation and celestial configurations are unaffected.
-              </p>
+              <p className="footnote">{tx("common:textSizeNote")}</p>
               <div className="dialog-actions">
                 <button
                   className="button outline"
                   disabled={textSize === 100}
                   onClick={() => setTextSize(100)}
-                >
-                  Reset to 100%
-                </button>
+                >{tx("common:resetTextSize")}</button>
                 <button
                   className="button primary"
                   onClick={() => setOpen(false)}
-                >
-                  Done
-                </button>
+                >{tx("common:done")}</button>
               </div>
             </section>
           </div>,
