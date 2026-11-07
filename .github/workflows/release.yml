@@ -38,8 +38,9 @@ jobs:
       - name: Run regression tests
         run: npm test
       - name: Build release ZIP
-        if: runner.os == 'Linux'
         run: npm run package
+      - name: Smoke-test the release package
+        run: npm run smoke
       - name: Upload release ZIP
         if: runner.os == 'Linux'
         uses: actions/upload-artifact@v7

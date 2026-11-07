@@ -71,13 +71,20 @@ async function serverNotices() {
 
 const files = {
   [`${folder}/orbital-lab.cjs`]: server.outputFiles[0].contents,
+  [`${folder}/orbital-lab.cmd`]: await readFile(path.join(root, "packaging/orbital-lab.cmd")),
+  [`${folder}/orbital-lab.sh`]: await readFile(path.join(root, "packaging/orbital-lab.sh")),
+  [`${folder}/launcher.mjs`]: await readFile(path.join(root, "packaging/launcher.mjs")),
   [`${folder}/app-config.json`]: strToU8('{\n  "demoMode": false\n}\n'),
   [`${folder}/LICENSE`]: await readFile(path.join(root, "LICENSE")),
   [`${folder}/THIRD-PARTY-SERVER.txt`]: await serverNotices(),
   [`${folder}/RUN.txt`]: strToU8(
-    "Orbital Lab\n\nRequires Node.js 22.12+ in the 22.x series or Node.js 24+.\n" +
-    "Run node orbital-lab.cjs and open http://127.0.0.1:5173.\n" +
-    "Press Ctrl+C to stop. Set PORT before starting to use a different port.\n" +
+    "Orbital Lab\n\nRequires Node.js 22.12+ in the 22.x series or Node.js 24+.\n\n" +
+    "Windows:  orbital-lab.cmd start\n" +
+    "Linux:    bash orbital-lab.sh start\n\n" +
+    "Commands: start, restart, stop. No argument restarts the server.\n" +
+    "Set PORT before starting to use a different port (default 5173).\n" +
+    "A port that is already in use stops the command with an error.\n\n" +
+    "Open http://127.0.0.1:5173 in a browser. Logs are written to .runtime/.\n" +
     "Edit app-config.json and restart to enable demo mode.\n" +
     "Saved configurations are written to celestial-configs.json beside orbital-lab.cjs.\n" +
     "Keep this directory writable if you plan to save configurations.\n",

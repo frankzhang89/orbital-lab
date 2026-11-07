@@ -45,15 +45,23 @@ npm ci
 npm run package
 ```
 
-If PowerShell blocks `npm.ps1`, use `npm.cmd` for both commands. The output is `release/orbital-lab-<version>.zip`. The archive contains the bundled production server, the built frontend, a default `app-config.json`, and license notices.
+If PowerShell blocks `npm.ps1`, use `npm.cmd` for both commands. The output is `release/orbital-lab-<version>.zip`. The archive contains the bundled production server, the built frontend, the Windows and Linux launchers, a default `app-config.json`, and license notices.
 
-Extract the archive on Windows or Linux. With Node.js 22.12+ in the 22.x series or Node.js 24+, run this command from the extracted directory.
+Extract the archive on Windows or Linux. With Node.js 22.12+ in the 22.x series or Node.js 24+, there is nothing else to install:
 
-```sh
-node orbital-lab.cjs
+```bat
+orbital-lab.cmd start
 ```
 
-Open `http://127.0.0.1:5173` and press Ctrl+C in the terminal to stop the service. Set `PORT` before startup to use a different port. The extracted package includes all runtime dependencies and can run offline with Node.js alone.
+```sh
+bash orbital-lab.sh start
+```
+
+Both launchers accept `start`, `restart`, and `stop`. The argument is optional and defaults to `restart`. `start` returns once the server reports healthy, and the service keeps running after the console closes. If the port is already in use, the command fails with a nonzero exit code and starts nothing. Set `PORT` before starting to use a different port.
+
+Open `http://127.0.0.1:5173`, and run the launcher with `stop` to shut the server down. The extracted package includes all runtime dependencies and can run offline with Node.js alone. Logs are appended under `.runtime/`. You can still run `node orbital-lab.cjs` directly to keep it in the foreground.
+
+These release launchers are separate from the source launchers described under [Background start / stop / restart](#background-start--stop--restart), which run the TypeScript server with local dependencies.
 
 The packaged server resolves its files beside `orbital-lab.cjs`, even when launched from a different working directory. The release defaults to normal mode. Edit `app-config.json` and restart to enable demo mode. Saved configurations go into `celestial-configs.json` beside the server. Each new release starts with an empty configuration library.
 
@@ -66,7 +74,7 @@ git tag -a v0.1.0 -m "Release v0.1.0"
 git push origin v0.1.0
 ```
 
-A tag matching `v*` starts the release workflow. Windows and Linux run the regression suite, and Linux builds the portable ZIP. Once both jobs succeed, GitHub creates a Release for the tag with generated notes and attaches the ZIP. The workflow uses the repository's built-in GitHub token.
+A tag matching `v*` starts the release workflow. Windows and Linux run the regression suite and smoke-test the ZIP built on that platform; Linux uploads the portable ZIP. Once both jobs succeed, GitHub creates a Release for the tag with generated notes and attaches the ZIP. The workflow uses the repository's built-in GitHub token.
 
 ## Background start / stop / restart
 
@@ -250,6 +258,7 @@ The following endpoints are intended for the local, same-origin application:
 
 | Endpoint                         | Behavior                                                                                                                            |
 | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| `GET /api/health`                | Returns `{status: "ok", pid}` so the release launchers can verify the serving process                                                |
 | `GET /api/configurations`        | Returns `{version: 2, configurations: [...]}`                                                                                       |
 | `PUT /api/configurations/:id`    | Accepts `{name, central, orbiters}`, creates or replaces the configuration, and returns the record with its ID and update timestamp |
 | `DELETE /api/configurations/:id` | Deletes the specified configuration and returns HTTP 204 on success                                                                 |

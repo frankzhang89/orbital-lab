@@ -22,6 +22,10 @@ export function createApp(store: ConfigurationStore, settings: Readonly<AppSetti
   app.get("/api/settings", (_req, res) => {
     res.json({ demoMode });
   });
+  // Lets the release launchers prove that the process they recorded still owns this port.
+  app.get("/api/health", (_req, res) => {
+    res.json({ status: "ok", pid: process.pid });
+  });
   // Reject before body parsing or any storage access, including malformed writes.
   app.use("/api/configurations", (req, res, next) => {
     if (demoMode && (req.method === "PUT" || req.method === "DELETE")) {

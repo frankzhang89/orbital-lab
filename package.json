@@ -1,6 +1,6 @@
 {
   "name": "orbital-lab",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "type": "module",
   "scripts": {
@@ -8,6 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "start": "tsx server/index.ts --production",
     "test": "vitest run",
+    "smoke": "node scripts/smoke-release.mjs",
     "package": "npm run build && node scripts/package.mjs"
   },
   "dependencies": {

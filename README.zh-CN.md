@@ -45,15 +45,23 @@ npm ci
 npm run package
 ```
 
-如果 Windows PowerShell 阻止 `npm.ps1`，两个命令均改用 `npm.cmd`。产物为 `release/orbital-lab-<版本>.zip`，包含已打包的生产服务、前端资源、默认 `app-config.json` 和许可证声明。
+如果 Windows PowerShell 阻止 `npm.ps1`，两个命令均改用 `npm.cmd`。产物为 `release/orbital-lab-<版本>.zip`，包含已打包的生产服务、前端资源、Windows 与 Linux 启动脚本、默认 `app-config.json` 和许可证声明。
 
-在 Windows 或 Linux 解压后，使用 Node.js 22.x 中的 22.12+ 或 Node.js 24+，在解压目录执行以下命令。
+在 Windows 或 Linux 解压后，使用 Node.js 22.x 中的 22.12+ 或 Node.js 24+，无需其他安装：
 
-```sh
-node orbital-lab.cjs
+```bat
+orbital-lab.cmd start
 ```
 
-打开 `http://127.0.0.1:5173`，在启动终端按 Ctrl+C 停止服务。需要更换端口时，在启动前设置 `PORT`。运行包已经包含全部运行依赖，部署机器只需 Node.js 即可离线运行。
+```sh
+bash orbital-lab.sh start
+```
+
+两个启动脚本都接受 `start`、`restart`、`stop`，参数可省略，省略时默认为 `restart`。`start` 在服务健康后立即返回，关闭控制台后服务继续运行。端口已被占用时，命令以非零退出码报错，不会启动或停止任何进程。需要更换端口时，在启动前设置 `PORT`。
+
+打开 `http://127.0.0.1:5173`，用 `stop` 停止服务。运行包已经包含全部运行依赖，部署机器只需 Node.js 即可离线运行，日志追加写入 `.runtime/`。也可以直接执行 `node orbital-lab.cjs`，让服务留在前台。
+
+这些运行包启动脚本与“后台启动、停止与重启”一节中面向源码的脚本相互独立，后者需要本地依赖和 `tsx`。
 
 服务始终从 `orbital-lab.cjs` 所在目录读取文件，也可从其他工作目录调用。运行包默认关闭演示模式，修改 `app-config.json` 后重启即可切换。保存的配置写到服务文件同级的 `celestial-configs.json`。每个新运行包的配置库初始为空。
 
@@ -66,7 +74,7 @@ git tag -a v0.1.0 -m "Release v0.1.0"
 git push origin v0.1.0
 ```
 
-推送匹配 `v*` 的标签会触发发布流程。Windows 和 Linux 分别运行回归测试，Linux 生成通用 ZIP。两边均通过后，GitHub 会为该标签创建 Release，自动生成发布说明并附上 ZIP。流程使用仓库内置的 GitHub 令牌。
+推送匹配 `v*` 的标签会触发发布流程。Windows 和 Linux 分别运行回归测试，并用各自的启动脚本对运行包做一次冒烟测试；Linux 上传通用 ZIP。两边均通过后，GitHub 会为该标签创建 Release，自动生成发布说明并附上 ZIP。流程使用仓库内置的 GitHub 令牌。
 
 ## 后台启动、停止与重启
 
@@ -250,6 +258,7 @@ configurations:
 
 | 接口 | 行为 |
 | --- | --- |
+| `GET /api/health` | 返回 `{status: "ok", pid}`，供运行包启动脚本校验服务进程身份 |
 | `GET /api/configurations` | 返回 `{version: 2, configurations: [...]}` |
 | `PUT /api/configurations/:id` | 接收 `{name, central, orbiters}`，新增或替换配置，并返回包含 ID 和更新时间的记录 |
 | `DELETE /api/configurations/:id` | 删除指定配置，成功后返回 HTTP 204 |
