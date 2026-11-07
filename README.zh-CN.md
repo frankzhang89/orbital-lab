@@ -36,6 +36,38 @@ npm test
 
 存储测试使用临时目录，不会修改你的配置文件。安装依赖后，应用可以离线运行：字体、图标和行星视觉效果均由本地提供。
 
+## 打包成仅需 Node.js 的运行包
+
+在源码目录安装构建依赖并打包。
+
+```sh
+npm ci
+npm run package
+```
+
+如果 Windows PowerShell 阻止 `npm.ps1`，两个命令均改用 `npm.cmd`。产物为 `release/orbital-lab-<版本>.zip`，包含已打包的生产服务、前端资源、默认 `app-config.json` 和许可证声明。
+
+在 Windows 或 Linux 解压后，使用 Node.js 22.x 中的 22.12+ 或 Node.js 24+，在解压目录执行以下命令。
+
+```sh
+node orbital-lab.cjs
+```
+
+打开 `http://127.0.0.1:5173`，在启动终端按 Ctrl+C 停止服务。需要更换端口时，在启动前设置 `PORT`。运行包已经包含全部运行依赖，部署机器只需 Node.js 即可离线运行。
+
+服务始终从 `orbital-lab.cjs` 所在目录读取文件，也可从其他工作目录调用。运行包默认关闭演示模式，修改 `app-config.json` 后重启即可切换。保存的配置写到服务文件同级的 `celestial-configs.json`。每个新运行包的配置库初始为空。
+
+### 通过 GitHub 发布运行包
+
+提交打包代码和 `.github/workflows/release.yml`，再推送指向该提交的版本标签。标签版本与 `package.json` 保持一致，便于对应 Release 和 ZIP 文件名。
+
+```sh
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+```
+
+推送匹配 `v*` 的标签会触发发布流程。Windows 和 Linux 分别运行回归测试，Linux 生成通用 ZIP。两边均通过后，GitHub 会为该标签创建 Release，自动生成发布说明并附上 ZIP。流程使用仓库内置的 GitHub 令牌。
+
 ## 后台启动、停止与重启
 
 三个脚本位于项目根目录，与 `package.json` 同级。首次在目标操作系统上准备生产版：

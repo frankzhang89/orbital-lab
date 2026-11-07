@@ -36,6 +36,38 @@ npm test
 
 Storage tests use temporary directories and do not modify your configuration file. Once dependencies are installed, the application runs offline: fonts, icons, and planet visuals are provided locally.
 
+## Build a Node-only release package
+
+From the source directory, install the build dependencies and create the release.
+
+```sh
+npm ci
+npm run package
+```
+
+If PowerShell blocks `npm.ps1`, use `npm.cmd` for both commands. The output is `release/orbital-lab-<version>.zip`. The archive contains the bundled production server, the built frontend, a default `app-config.json`, and license notices.
+
+Extract the archive on Windows or Linux. With Node.js 22.12+ in the 22.x series or Node.js 24+, run this command from the extracted directory.
+
+```sh
+node orbital-lab.cjs
+```
+
+Open `http://127.0.0.1:5173` and press Ctrl+C in the terminal to stop the service. Set `PORT` before startup to use a different port. The extracted package includes all runtime dependencies and can run offline with Node.js alone.
+
+The packaged server resolves its files beside `orbital-lab.cjs`, even when launched from a different working directory. The release defaults to normal mode. Edit `app-config.json` and restart to enable demo mode. Saved configurations go into `celestial-configs.json` beside the server. Each new release starts with an empty configuration library.
+
+### Publish a GitHub Release
+
+Commit the packaging code and `.github/workflows/release.yml`, then push a version tag pointing to that commit. Use the version in `package.json` for the tag so the release and ZIP names agree.
+
+```sh
+git tag -a v0.1.0 -m "Release v0.1.0"
+git push origin v0.1.0
+```
+
+A tag matching `v*` starts the release workflow. Windows and Linux run the regression suite, and Linux builds the portable ZIP. Once both jobs succeed, GitHub creates a Release for the tag with generated notes and attaches the ZIP. The workflow uses the repository's built-in GitHub token.
+
 ## Background start / stop / restart
 
 The three launch scripts live in the project root beside `package.json`. Prepare the production version once on the target OS:

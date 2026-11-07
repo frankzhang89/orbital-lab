@@ -7,3 +7,4 @@ celestial-configs.json.v1.bak
 .DS_Store
 
 .runtime/
+/release/
