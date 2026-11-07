@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { access, cp, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import { access, cp, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createServer } from "node:net";
@@ -52,7 +52,9 @@ http.createServer((request, response) => {
 
 describe("release launcher", () => {
   beforeAll(async () => {
-    fixture = await mkdtemp(path.join(tmpdir(), "orbital launcher 空格-"));
+    // Resolve 8.3 short names: Windows CI runners report a short %TEMP%, which would
+    // disagree with the canonical path the launcher records for itself.
+    fixture = await realpath(await mkdtemp(path.join(tmpdir(), "orbital launcher 空格-")));
     for (const file of ["launcher.mjs", "orbital-lab.cmd", "orbital-lab.sh"]) {
       await cp(path.join(project, "packaging", file), path.join(fixture, file));
     }

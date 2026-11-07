@@ -1,5 +1,5 @@
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import { cp, mkdtemp, readFile, rm, symlink, writeFile, mkdir, access } from "node:fs/promises";
+import { cp, mkdtemp, readFile, realpath, rm, symlink, writeFile, mkdir, access } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { createServer } from "node:net";
@@ -35,7 +35,9 @@ async function pidRecord() {
 
 describe.skipIf(!supported)("production launcher integration (isolated project copy)", () => {
   beforeAll(async () => {
-    fixture = await mkdtemp(path.join(tmpdir(), "orbital launch 空格测试-"));
+    // Resolve 8.3 short names: Windows CI runners report a short %TEMP%, while the
+    // PowerShell launcher stores the expanded long path in its process record.
+    fixture = await realpath(await mkdtemp(path.join(tmpdir(), "orbital launch 空格测试-")));
     for (const item of ["src", "server", "package.json", ...scripts]) await cp(path.join(project, item), path.join(fixture, item), { recursive: true });
     // A fixture-only fault switch exercises an unhealthy existing process without changing production code.
     const appFile = path.join(fixture, "server/app.ts");
